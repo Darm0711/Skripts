@@ -1,0 +1,61 @@
+from Data_preparation import *
+from PA_REST_API import *
+import difflib
+import re
+
+PANORAMA_HOST = ''
+API_KEY = ''
+#
+# data_split('1.txt', '2.txt')
+# cidr_list = process_ip_ranges('2.txt', '3.txt')
+
+# rule = r'(?:\w+-){2,3}fw\d{2}'
+# rule = r'(?:(?:2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(?:2[0-4]\d|25[0-5]|[01]?\d\d?)'            # public IP wo VLSM
+# rule_2 = r'/\d{2}'
+# rule = r'(?:(?:2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(?:2[0-4]\d|25[0-5]|[01]?\d\d?\/\d\d)'    # public IP with VLSM
+# # rule = r'\d{6}[Ttuh]?'              # 提取hostname
+# # rule = r'(?:10\.(?:16[8-9]|17[0-5])\.(?:2[0-4]\d|25[0-5]|\d\d?)\.(?:2[0-4]\d|25[0-5]|[01]?\d\d?))'      # IP Address
+# # rule = r'(?:[fa]?|(?:oth)?)\d{5}|u\d{7}'                     #提取AD-Account
+# rule_2 = r'(?:(?:[fa]?|(?:oth)?)\d{5}|u\d{7})@heraeus.com'     # 提取UPN形式的用户名
+# rule = r'(?:tcp_|TCP_|udp_|UDP)(?:\d{5}|\d{4}|\d{3}|\d{2})'
+# rule = r'(?:tcp|TCP|udp|UDP)'
+# # rule_3 = r'\d+'
+# rule = r'(?:\S*?com)'
+
+#
+# text_filter('1.txt', '2.txt', rule=rule)
+# text_filter('3.txt', '4.txt', rule=rule_2)
+# # remove_duplicates_from_file('IP_title.txt', '3.txt')
+#
+# #
+# # line_decoration('3.txt', '4.txt')  # 将文本全小写
+# line_decoration('IP_content.txt', 'IP_title.txt', prefix='n_', suffix='', sub_old='/', sub_new='_')
+# # # line_decoration('2.txt', 'IP_content.txt', suffix='/32')
+# # # line_decoration('1.txt', 'URL_titel.txt', prefix='url_.')
+# # # line_decoration('1.txt', 'URL_content.txt', url=True)
+# # # line_decoration('1.txt', '2.txt', prefix='heraeus_ads\\')
+# # # #
+# adr = ADDRESS(adr_obj_file='IP_title.txt')  # 'ip-netmask', 'fqdn'
+# adr.chk_cre(adr_val_file='IP_content.txt', adr_type='ip-netmask')
+# adr = ADDRESS('3.txt')
+# adr.delete()
+
+# add_gp = ADDRESS_GP(adr_grp='xxx)
+# add_gp.create(adr_obj_file='IP_title.txt')
+
+# remove_duplicates_from_file('3.txt','4.txt')
+
+# url = URL(url_obj_file='3.txt', url_val_file='1.txt')
+# url.create()
+
+# app = APP(app_obj_file='1.txt')
+# app.get()
+#
+# ser = SERVICE(ser_obj_file='4.txt')
+# ser.chk_cre()
+#
+# 建一个规则policy
+rule.get()
+# rule.c reate()
+# rule.delete()
+
