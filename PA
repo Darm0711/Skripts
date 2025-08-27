@@ -1,0 +1,295 @@
+import requests
+import urllib3
+from Data_preparation import *
+
+# 禁用 SSL 证书验证的警告（如果使用自签名证书）
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Panorama 的主机地址和 API 密钥
+host = 'https://sec0099.heraeus.com'
+api_key = 'e6bc89fb5328bd40d3d62c13c5b7369c:wFcK_gAe1BLucGeg0ZV9CKDRqgZnpYZGF0ZIIwSwHfb_GZPMK7HQhQpTKHjd99gGyaJZK_UpMS2LvCOtZwnFHNLySRebucXEuV8S0MH9W-QW4Gj168kywHM8_6FPvT1sG00yo8BG2qpJQFjAnviSyhUiFw0rT81kDe2GoDGMevg0tbjAQPfeqNm3E0s0XhVXENdhaYSE5TBYX9DXWXTSk7EnQYmFFQ6HK3xZBqacbIf_vkWNHseHglCAYArh5ioIvwPkHgqhS6oQtj_Ggt2N4Dj9Dv0yXcvWCXIYKpm17Nxsfbv0h63idTAg4d_c3PKyqantvwCjFgEzKyzv9dn6gm_U4yGddAjG3XtbJCJYYqGNj1__sD2YPpdMTKuZST9PJ_WMkKAsLQHaCN4elJZKHp29Ooi3wqaJWLgNOk0mXskdLnfEZ27N8AKlnMQAubcd7oQ5I-tBEve0F0KzpvvFsg4ucdDqQGg6r665T5kLQUd0KrYENOI33JzKruF9oGItGVPz0_PvidI80PmUA37uC8appvz4Smdf63J793HzY5cOszNy8tfvhJ_2VH5_Y-dEjuyAz6Npsr11AFa1M9UQTVVu3fQHYstoV8_eM_0l0P3IrzdEn_7Q-3v5wJ6ZAEkzwkuYEENyv29DOt5-nERB7xJX0t_Or6osmYiG4WRLEg7kH-Evbocas80X1uRn_sP6'
+
+
+class API_Basic:
+    def __init__(self):
+        self.host = host
+        self.api_key = api_key
+        self.headers = {'X-PAN-KEY': f'{self.api_key}',
+                        'Content-Type': 'application/json'}
+
+
+class ADDRESS(API_Basic):
+    def __init__(self, adr_obj_file, description=''):
+        super().__init__()
+        self.adr_list = file_to_list(adr_obj_file)
+        self.description = description
+
+    def chk_cre(self, adr_val_file, adr_type):                  # 检查地址对象是否存在，创建不存在的对象
+
+        adr_val_list = file_to_list(adr_val_file)
+        for i in range(len(self.adr_list)):
+
+            url = f"{self.host}/restapi/v11.2/Objects/Addresses?name={self.adr_list[i]}&location=shared"
+            request = requests.get(url, headers=self.headers, verify=False)
+
+            if request.status_code == 200:
+                print(f"Address '{self.adr_list[i]}' already exists.")
+            else:
+                print(f"Address '{self.adr_list[i]}' does not exist. Ready to add it.")
+                data = {
+                    "@name": self.adr_list[i],
+                    adr_type: adr_val_list[i],  # address_type 支持 "ip-netmask", "ip-range", 或 "fqdn"
+                    "description": self.description
+                }
+                payload = {'entry': data}
+
+                # 发起 POST 请求以创建地址对象
+                request = requests.post(url, headers=self.headers, json=payload, verify=False)
+                request.raise_for_status()  # 检查请求是否成功
+
+                print(f"obj_num: {i}: {self.adr_list[i]} created successfully:", request.json())
+
+    def rename(self, new_adr_file):
+
+        new_adr_list = file_to_list(new_adr_file)
+        for i in range(len(self.adr_list)):
+
+            url = f"{self.host}/restapi/v11.2/Objects/Addresses:rename?name={self.adr_list[i]}&location=shared&newname={new_adr_list[i]}"
+
+            request = requests.post(url, headers=self.headers, verify=False)
+            request.raise_for_status()
+
+            print(f"{self.adr_list[i]} renamed to {new_adr_list[i]} successfully", request.json())
+
+    def delete(self):
+
+        for i in range(len(self.adr_list)):
+
+            url = f"{self.host}/restapi/v11.2/Objects/Addresses?name={self.adr_list[i]}&location=shared"
+            request = requests.delete(url, headers=self.headers, verify=False)
+            request.raise_for_status()  # 检查请求是否成功
+
+            # 输出结果
+            print(f"{self.adr_list[i]} deleted successfully:", request.json())
+
+
+class ADDRESS_GP(API_Basic):
+    def __init__(self, adr_grp, description=''):
+        super().__init__()
+        self.grp = adr_grp
+        self.description = description
+        self.url = f"{self.host}/restapi/v11.2/Objects/AddressGroups?name={self.grp}&location=shared"
+
+    def get(self):
+
+        request = requests.get(self.url, headers=self.headers, verify=False)
+        request.raise_for_status()
+
+        with open(f"{self.grp}.txt", 'w') as f:
+            for i in request.json()['result']['entry'][0]['static']['member']:
+                f.writelines(i + '\n')
+
+        return request.json()['result']['entry'][0]['static']['member']
+
+    def create(self, adr_obj_file):
+
+        adr_list = file_to_list(adr_obj_file)
+        data = {"@name": self.grp,
+                "static": {"member": adr_list},
+                "tag": '',
+                "description": self.description}
+
+        payload = {'entry': data}
+
+        # 发起 POST 请求以创建地址对象
+        request = requests.post(self.url, headers=self.headers, json=payload, verify=False)
+        request.raise_for_status()  # 检查请求是否成功
+
+        # 输出结果
+        print(f"{self.grp} created successfully:", request.json())
+
+    def edit(self, new_obj_file):
+        new_obj_list = file_to_list(new_obj_file)
+
+        obj_list = []
+        for k in self.get():
+            obj_list.append(k)
+
+        obj_list.extend(new_obj_list)           # extend() 无返回值
+        print(obj_list)
+
+        data = {"@name": self.grp,
+                "static": {"member": obj_list},
+                "tag": '',
+                "description": self.description}
+
+        payload = {'entry': data}
+
+        # 发起 POST 请求以创建地址对象
+        request = requests.put(self.url, headers=self.headers, json=payload, verify=False)
+        request.raise_for_status()  # 检查请求是否成功
+
+        # 输出结果
+        print(f"{obj_list} added successfully into {self.grp}:", request.json())
+
+    def delete(self):
+        request = requests.delete(self.url, headers=self.headers, verify=False)
+        request.raise_for_status()
+
+        print(f"{self.grp} deleted successfully")
+
+
+class URL(API_Basic):
+    def __init__(self, url_obj_file, url_val_file):
+        super().__init__()
+        self.url_obj_list = file_to_list(url_obj_file)
+        self.url_val_list = file_to_list(url_val_file)
+
+    def create(self, description=''):               # 根据对象命名语法修改代码
+
+        for i in range(len(self.url_obj_list)):
+
+            url = f"{self.host}/restapi/v11.2/Objects/CustomURLCategories?name={self.url_obj_list[i]}&location=shared"
+
+            # 构造请求数据
+            payload = {"entry": {
+                "@name": self.url_obj_list[i],
+                "disable-override": "no",
+                "description": description,
+                "list": {"member": self.url_val_list[[2*i], self.url_val_list[2*i+1]]},
+                "type": "URL List"}}
+
+            # 发起 POST 请求以创建地址对象
+            request = requests.post(url, headers=self.headers, json=payload, verify=False)
+            request.raise_for_status()  # 检查请求是否成功
+
+            # 输出结果
+            print(f"URL_Categories {self.url_obj_list[i]} created successfully with content{self.url_val_list[2*i]} and {self.url_val_list[2*i+1]}:", request.json())
+
+
+class APP(API_Basic):
+    def __init__(self, app_obj_file, description=''):
+        super().__init__()
+        self.app_list = file_to_list(app_obj_file)
+        self.description = description
+
+    def get(self):
+
+        for i in range(len(self.app_list)):
+            url = f"{self.host}/restapi/v11.2/Objects/Applications?location=shared"
+            request = requests.get(url, headers=self.headers, verify=False)
+            request.raise_for_status()
+            print(request.json())
+
+    def check(self):
+        """
+        检查地址是否已经存在
+        """
+
+        for i in range(len(self.app_list)):
+
+            url = f"{self.host}/restapi/v11.2/Objects/Applications?name={self.app_list[i]}&location=shared"
+            request = requests.get(url, headers=self.headers, verify=False)
+
+            print(requests.status_codes)
+            if request.status_code == 200:
+                print(f"Address '{self.app_list[i]}' already exists.")
+            else:
+                print(f"Address '{self.app_list[i]}' does not exist. Ready to add it.")
+
+
+class SERVICE(API_Basic):
+    def __init__(self, ser_obj_file, description=''):
+        super().__init__()
+        self.ser_list = file_to_list(ser_obj_file)
+        self.ser_por_list, self.ser_val_list = srv_obj_to_content(ser_obj_file)
+        self.description = description
+
+    def chk_cre(self):
+
+        for i in range(len(self.ser_list)):
+
+            url = f"{self.host}/restapi/v11.2/Objects/Services?name={self.ser_list[i]}&location=shared"
+            request = requests.get(url, headers=self.headers, verify=False)
+
+            if request.status_code == 200:
+                print(f"Address '{self.ser_list[i]}' already exists.")
+            else:
+                print(f"Address '{self.ser_list[i]}' does not exist. Ready to add it.")
+                data = {
+                    "@name": self.ser_list[i],
+                    "protocol": {self.ser_por_list[i]: {"port": self.ser_val_list[i]}},
+                    "description": self.description
+                }
+                payload = {'entry': data}
+
+                # 发起 POST 请求以创建地址对象
+                request = requests.post(url, headers=self.headers, json=payload, verify=False)
+                request.raise_for_status()  # 检查请求是否成功
+
+                print(f"{self.ser_list[i]} created successfully:", request.json())
+
+
+class RULE(API_Basic):
+
+    def __init__(self, ply_name, device_gp='', S_Zone='Trust', S_adr='N_RFC1918', S_usr='any', D_Zone='Untrust',  D_adr='N_public',
+                 app_list='any', srv_list="application-default", url_list='any', act='allow', description=''):
+
+        super().__init__()
+        self.ply_name = ply_name
+        self.url = f"{host}/restapi/v11.2/Policies/SecurityPreRules?name={ply_name}&location=device-group&device-group={device_gp}"
+        self.payload = {"entry": {"@name": ply_name,
+                                  "from": {"member": S_Zone},
+                                  "to": {"member": D_Zone},
+                                  "source": {"member": S_adr},
+                                  "source-user": {"member": S_usr},
+                                  "destination": {"member": D_adr},
+                                  "service": {"member":  srv_list},
+                                  "category": {"member": url_list},
+                                  "application": {"member": app_list},
+                                  "action": act,
+                                  "log-setting": "default",
+                                  "log-end": "yes",
+                                  "profile-setting": {"group": {"member": ["default"]}},
+                                  "description": description
+                                  }}
+        # self.devi_gp = devi_gp
+
+    def get(self, Ziel=''):
+
+        for cls in fw():
+            device_gp = cls
+            self.url = f"{host}/restapi/v11.2/Policies/SecurityPreRules?name={self.ply_name}&location=device-group&device-group={device_gp}"
+            request = requests.get(self.url, headers=self.headers, verify=False)
+            if request.status_code == 200:
+                request.raise_for_status()
+                print(request.json())
+
+            Key_ls = ['source', 'source-user', 'destination', 'service', 'category', 'application']
+
+            if Ziel in Key_ls:
+                with open(f'{self.ply_name}_{Ziel}.txt', 'w') as x:
+                    for l in request.json()['result']['entry'][0][Ziel]['member']:
+                        x.write(l + '\n')
+
+    def create(self):
+
+        # 发起 POST 请求以创建地址对象
+        request = requests.post(self.url, headers=self.headers, json=self.payload, verify=False)
+        request.raise_for_status()  # 检查请求是否成功
+
+        print(f"{self.ply_name} created successfully:", request.json())
+
+    def edit(self):
+        # 发起 POST 请求以创建地址对象
+        request = requests.put(self.url, headers=self.headers, json=self.payload, verify=False)
+        request.raise_for_status()  # 检查请求是否成功
+
+        print(f"{self.ply_name} changed successfully:", request.json())
+
+    def delete(self):
+
+        request = requests.delete(self.url, headers=self.headers, verify=False)
+        request.raise_for_status()
+
+        print(f'{self.ply_name} is deleted successfully in {self.devi_gp}', request.json())
