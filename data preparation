@@ -1,0 +1,148 @@
+# 为txt文件中的各行添加需要的符号
+import ipaddress
+import difflib
+import re
+
+
+def line_decoration(file_1, file_2, prefix='', suffix='', sub_old='', sub_new='', url=False):
+    # 添加前缀，后缀或进行字符串替代
+    with open(file_2, 'w') as c:
+        with open(file_1, 'r') as f:
+            for line in f.readlines():
+                line = line.lower()
+                if line == '\n':
+                    del line
+                elif url == True:
+                    line_suf = line.strip() + '/\n'
+                    c.write(line_suf)
+                    line_wild = '*.' + line_suf
+                    c.write(line_wild)
+                else:
+                    # 添加前缀
+                    line_pre = prefix + line
+                    # 添加后缀
+                    line_sub = line_pre.replace(sub_old, sub_new)
+                    line_suf = line_sub.replace('\n', '') + suffix + '\n'
+                    c.write(line_suf)
+
+
+def text_filter(file_1, file_2, rule):      # 根据正则法检索文本
+    with open(file_1, 'r') as f1:
+        with open(file_2, 'w') as f2:
+            text = f1.read()
+            pattern = re.compile(rule)
+            item_list = re.findall(pattern, text)
+            print(item_list)
+            for item in item_list:
+                f2.write(item + '\n')
+
+
+def data_split(file_1, file_2):
+    with open(file_1, 'r') as f1:
+        content = f1.read()
+        adr_list = content.replace(',', '\n')
+        print(adr_list)
+    with open(file_2, 'w') as f2:
+        for adr in adr_list:
+            f2.write(adr)
+
+
+def file_to_list(file):             # 文件转列表
+    with open(file, 'r', encoding='utf-8') as f:
+        adr_list = [line.lower().strip() for line in f]
+        print(adr_list)
+        return adr_list
+
+
+def srv_obj_to_content(file):
+    with open(file, 'r', encoding='utf-8') as f:
+        text = f.read().lower()
+        srv_name = re.compile(r'tcp|udp')
+        srv_num = re.compile(r'\d{2,5}')
+        srv_name_ls = re.findall(srv_name, text)
+        srv_num_ls = re.findall(srv_num, text)
+        return srv_name_ls, srv_num_ls
+
+
+def ip_range_to_cidr(ip_range):
+    start_ip, end_ip = ip_range.split('-')
+    start_ip = ipaddress.IPv4Address(start_ip.strip())
+    end_ip = ipaddress.IPv4Address(end_ip.strip())
+
+    cidrs = []
+    while start_ip <= end_ip:
+        for prefix in range(16, 33):
+            try:
+                net = ipaddress.ip_network(f"{start_ip}/{prefix}", strict=False)
+                if net.network_address == start_ip and net.broadcast_address <= end_ip:
+                    cidrs.append(str(net))
+                    start_ip = net.broadcast_address + 1        # 用于跳出循环
+                    break
+            except ValueError:
+                continue
+    return cidrs
+
+
+# 读取文件并转换IP地址范围为子网掩码格式
+def process_ip_ranges(file_r, file_w):
+    with open(file_w, 'w') as fw:
+        with open(file_r, 'r') as file:
+            lines = file.readlines()
+
+        for line in lines:
+            ip_range = line.strip()
+            if ip_range:
+                fw.writelines(ip_range_to_cidr(ip_range))
+                fw.writelines('\n')
+
+
+def generate_diff(file_1, file_2):
+    with open(file_1, 'r'):
+        with open(file_2, 'r'):
+            diff = difflib.HtmlDiff().make_file(file_1, file_2)
+    return diff
+
+
+def save_diff_html(diff, output_path):
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write(diff)
+
+
+# 读取文件内容
+# file_1 = read_file('1.txt')
+# file_2 = read_file('2.txt')
+#
+# # 生成差异文件
+# diff_html = generate_diff(file_1, file_2)
+#
+# # 保存为HTML文件
+# save_diff_html(diff_html, 'diff_output.html')
+#
+# print("Diff file generated at 'diff_output.html'. Open it in a browser to see the result.")
+
+
+def remove_duplicates_from_file(input_file, output_file):
+
+    seen = set()  # 用于存储已见过的值
+    unique_lines = []  # 用于存储去重后的行
+
+    with open(input_file, 'r', encoding='utf-8') as file:
+        for line in file:
+            cleaned_line = line.strip()  # 去掉换行符和前后空格
+            if cleaned_line not in seen:  # 检查是否已出现
+                seen.add(cleaned_line)
+                unique_lines.append(cleaned_line)
+
+    with open(output_file, 'w', encoding='utf-8') as file:
+        for line in unique_lines:
+            file.write(line + '\n')  # 将每一行写回文件
+
+    print(f"去重后的数据已写入 {output_file} 文件中！")
+
+
+def fw(input_file='firewall.txt'):
+    with open(input_file, 'r') as f:
+        FW = []
+        for line in f.readlines():
+            FW.append(line.strip())
+    return FW
